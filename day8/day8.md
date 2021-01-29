@@ -94,4 +94,4 @@ Fix the program so that it terminates normally by changing exactly one `jmp` (to
 
 Your puzzle answer was `515`.
 
-**Both parts of this puzzle are complete! They provide two gold stars: ** **
+**Both parts of this puzzle are complete! They provide two gold stars:** **

@@ -1,0 +1,237 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<bag.h>
+
+//struct bag{
+//  int qty;
+//  char *color;
+//  struct bag **contains;
+//  int contains_size;
+//  int contains_checked;
+//  long unsigned int sum;
+//};
+
+void print_bags(struct bag *bag) {
+	print_bag("current bag", bag);
+	for(int i = 0; i < bag->contains_size; i++){
+		print_bags(bag->contains[i]);
+	}
+}
+
+void reset_bag(struct bag *bag){
+	bag->contains_checked = 0;
+	for(int i = 0; i < bag->contains_size; i++){
+		reset_bag(bag->contains[i]);
+	}
+}
+
+struct bag **resize_lifo(struct bag **lifo, size_t new_size){
+	struct bag **result = realloc(lifo, sizeof(struct bag*) * new_size);
+	return result;
+}
+
+void print_bag(char *message, struct bag *bag){
+	if(bag == NULL){
+		printf("%s: []\n", message);
+		return;
+	} 
+
+	printf("%s: {color: %s, qty: %d, contains_size: %d, contains_checked: %d}\n",
+			message,
+			bag->color,
+			bag->qty,
+			bag->contains_size,
+			bag->contains_checked);
+
+}
+
+void print_lifo(struct bag **lifo, size_t stack_size){
+	printf("lifo: ");
+		
+	if(stack_size == 0){
+		printf("[]\n");
+	} else {
+		printf("{");
+		for(unsigned int i = 0; i < stack_size; i++){
+			printf("color: %s", lifo[i]->color);
+			if(i != stack_size - 1){
+				printf(", "); 
+			}
+		}
+		printf("}\n");
+	}
+}
+
+void build_bags_tree_2(struct bag* current, char **inputs, long unsigned int inputs_size){
+	build_bag(current, inputs, inputs_size);
+	for(int i = 0; i < current->contains_size; i++){
+		build_bags_tree_2(current->contains[i], inputs, inputs_size);
+	}
+}
+
+void build_bags_tree(struct bag* current, struct bag **lifo, size_t stack_size, char **inputs, long unsigned int inputs_size){
+
+	// nothing to process
+	if(current->contains_size == 0){
+
+		if(stack_size == 1){
+			stack_size = 0;
+			free(lifo);
+		} else {
+			stack_size = stack_size - 1;
+			lifo = resize_lifo(lifo, stack_size);
+			struct bag *previous = lifo[stack_size - 1];
+			build_bags_tree(previous, lifo, stack_size, inputs, inputs_size);
+		}
+
+	} else {
+		// all node have been processed
+		if(current->contains_checked == current->contains_size){
+			// same as previous ..
+			if(stack_size == 1){
+				stack_size = 0;
+				free(lifo);
+				return;
+			} else {
+				stack_size = stack_size - 1;
+				lifo = resize_lifo(lifo, stack_size);
+				struct bag *previous = lifo[stack_size - 1];
+				build_bags_tree(previous, lifo, stack_size, inputs, inputs_size);
+			}
+		} else {
+			// check the next node
+			struct bag *next = current->contains[current->contains_checked]; 
+			print_bag(">next bag", next);
+			next = build_bag(next, inputs, inputs_size);
+			print_bag(">>next bag", next);
+			current->contains_checked = current->contains_checked + 1;
+			stack_size = stack_size + 1;
+			lifo = resize_lifo(lifo, stack_size);
+			lifo[stack_size - 1] = next;
+			build_bags_tree(next, lifo, stack_size, inputs, inputs_size);
+		}
+	}
+}
+
+struct bag* build_bag(struct bag *current_bag, char **inputs, long unsigned int inputs_size){
+	char *bag_color = current_bag->color;
+
+	for(int i=0; i<inputs_size; i++){
+		char *line = inputs[i];
+		char *str  = strstr(line, "bag");
+
+		int index = str - line - 1;
+
+		char *color = malloc(index+1);
+		memset(color, '\0', index + 1);
+		strncpy(color, line, index);
+
+		if(strcmp(color, bag_color)==0){
+			char *sub = strstr(line, "contain");
+			sub = sub + 8; // remove "contain "
+
+			if(strstr(sub, "no other bags")!=NULL){
+				current_bag->contains = NULL;
+				current_bag->qty=0;
+				free(color);
+				return current_bag;
+			} 
+
+			// create subbags
+			char *sub1 = strstr(sub, ",");
+			if(sub1!=NULL){
+				sub1 = sub1 + 2;
+			}
+
+			while(sub1){
+				unsigned int index = sub1 - sub - 2; 
+				char number_str = sub[0];
+				int qty = atoi(&number_str);
+
+				char *tmp = malloc(index+1);
+				memset(tmp, '\0', index + 1);
+				strncpy(tmp, sub, index);
+				char *tmp22 = tmp+2;
+				char *tmp2 = strstr(tmp22, "bag");
+
+				unsigned int index2 = tmp2 - tmp22 - 1;
+				char *color = malloc(index2+1);
+				memset(color, '\0', index2+ 1);
+				strncpy(color, tmp22, index2);
+
+				printf("qty: %d, color: %s\n", qty, color);
+				struct bag *_bag = malloc(sizeof(struct bag));;
+				_bag->qty = qty;
+				_bag->contains = NULL;
+				_bag->color = color;
+				_bag->contains_size=0;
+				_bag->contains_checked=0;
+				_bag->sum = 0;
+				print_bag("current", _bag);
+
+				sub = sub1;// = sub1 + 2;
+				sub1 = strstr(sub1, ",");
+				if(sub1!=NULL){
+					sub1 = sub1 + 2;
+				}
+
+				if(current_bag->contains_size == 0){
+					current_bag->contains = malloc(sizeof(struct bag *));
+					current_bag->contains[0] = _bag;
+				} else {
+					struct bag **_contains = realloc(current_bag->contains, (current_bag->contains_size + 1) * sizeof(struct bag *));
+					if(_contains == NULL){
+						exit(EXIT_FAILURE);
+					}
+
+					current_bag->contains = NULL;
+					current_bag->contains = _contains;
+					current_bag->contains[current_bag->contains_size] = _bag;
+				}
+
+				current_bag->contains_size++;
+
+				free(tmp);
+			}
+
+			char number_str = sub[0];
+			int qty = atoi(&number_str);
+
+			int index = strstr(sub, "bag") - 1 - (sub + 2);
+
+			char *tmp = malloc(index + 1);
+			memset(tmp, '\0', index+1);
+			strncpy(tmp, sub + 2, index);
+
+			printf(">>qty: %d, color: %s\n", qty, color);
+			struct bag *_bag = malloc(sizeof(struct bag));;
+			_bag->qty = qty;
+			_bag->contains = NULL;
+			_bag->color = tmp;
+			_bag->contains_size=0;
+			_bag->contains_checked=0;
+			_bag->sum = 0;
+
+			if(current_bag->contains_size == 0){
+				current_bag->contains = malloc(sizeof(struct bag *));
+				current_bag->contains[current_bag->contains_size] = _bag;
+			} else {
+				size_t next_size = ((current_bag->contains_size)+1) * sizeof(struct bag *);
+				struct bag **_contains = realloc(current_bag->contains, next_size);
+				if(_contains == NULL){
+					exit(EXIT_FAILURE);
+				}
+				current_bag->contains = NULL;
+				current_bag->contains = _contains;
+				current_bag->contains[current_bag->contains_size] = _bag;
+			}
+
+			current_bag->contains_size++;
+		} 
+
+		free(color);
+	}
+
+	return current_bag;
+}

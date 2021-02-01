@@ -35,6 +35,8 @@ main(){
 		inputs[inputs_size] = tmp;
 		inputs_size++;
 	}
+	
+	fclose(file);
 
 	int next = STEP;
 	int start = 0;
@@ -56,6 +58,11 @@ main(){
 	}
 
 	printf("result: %ld\n", result);
+
+	// free
+	free(r2->result);	
+	free(r2);
+	free(inputs);
 }
 
 void swap(int* xp, int* yp) 
@@ -97,7 +104,7 @@ struct result_struct * check2(int *inputs, int input_size, int number){
 				for(int k = 0; k < result_size; k++){
 					result_array[k] = inputs[i+k];
 				}
-				struct result_struct *result = malloc(sizeof(struct result_struct *));
+				struct result_struct *result = malloc(sizeof(struct result_struct));
 				result->result_size = result_size;
 				result->result = result_array;
 				return result;
